@@ -1,27 +1,60 @@
-import express from 'express';
+const express = require("express");
+const Book = require("../models/bookModel");
 const bookRouter = express.Router();
-bookRouter
-    app.get('/', (req, res) => {
-        res.json([
-                {
-                    id: 1,
-                    title: "Alices Adventures in Wonderland",
-                    author: "Charles Lutwidge Dodgson"
-                },
-                {
-                    id: 2,
-                    title: "Einsteins Dreams",
-                    author: "Alan Lightman"
-                }
-            ])
+
+bookRouter.route('/')
+    .get((req, res) => {
+        Book.find({}, (err, books) => {
+            res.json(books)
+        })  
     })
-    app.get('/2', (req,res)=>{
-        res.json(
-                {
-                    id: 2,
-                    title: "Einsteins Dreams",
-                    author: "Alan Lightman"
-                }
-            )
+    .post((req, res) => {
+        let book = new Book(req.body);
+        book.save();
+        res.status(201).send(book) 
     })
-export default bookRouter;
+
+// Middleware 
+bookRouter.use('/:bookId', (req, res, next)=>{
+    Book.findById( req.params.bookId, (err,book)=>{
+        if(err)
+            res.status(500).send(err)
+        else {
+            req.book = book;
+            next()
+        }
+    })
+
+})
+bookRouter.route('/:bookId')
+    .get((req, res) => {
+        res.json(req.book)
+    }) // end get Books/:bookId 
+    .put((req,res) => {
+        req.book.title = req.body.title;
+        req.book.author = req.body.author;
+        req.book.save()
+        res.json(req.book)
+    })
+    .patch((req,res)=>{
+        if(req.body._id){
+            delete req.body._id;
+        }
+        for( let p in req.body ){
+            req.book[p] = req.body[p]
+        }
+        req.book.save()
+        res.json(req.book)
+    })//patch
+    .delete((req,res)=>{
+        req.book.remove(err => {
+            if(err){
+                res.status(500).send(err)
+            }
+            else{
+                res.status(204).send('removed')
+            }
+        })
+    })//delete
+
+    module.exports=bookRouter;
